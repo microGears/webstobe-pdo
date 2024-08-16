@@ -14,6 +14,10 @@ namespace WebStone\PDO;
 
 use PDOStatement;
 use WebStone\Cache\Cache;
+use WebStone\PDO\Builder\QueryBuilder;
+use WebStone\PDO\Builder\QueryBuilderInterface;
+use WebStone\PDO\Builder\SchemaBuilder;
+use WebStone\PDO\Builder\SchemaBuilderInterface;
 use WebStone\PDO\Exceptions\EDatabaseError;
 use WebStone\PDO\Exceptions\ESQLError;
 use WebStone\Stdlib\Classes\AutoInitialized;
@@ -27,14 +31,14 @@ use WebStone\Stdlib\Helpers\ArrayHelper;
  */
 class Database extends AutoInitialized
 {
-    protected ?Cache $cache = null;
-    protected array $connections     = [];
-    protected ?Driver $driver        = null;
-    protected ?string $driverKey     = null;
-    protected int $queryCounter      = 0;
-    protected string $queryStr       = '';
-    protected array $queryParams     = [];
-    protected int $queryRowsAffected = 0;
+    protected ?Cache $cache            = null;
+    protected array $connections       = [];
+    protected ?Driver $driver          = null;
+    protected ?string $driver_key      = null;
+    protected int $query_counter       = 0;
+    protected string $query_str        = '';
+    protected array $query_params      = [];
+    protected int $query_rows_affected = 0;
 
     /**
      * Adds a new database connection.
@@ -47,7 +51,7 @@ class Database extends AutoInitialized
      *
      * @return self Returns the current instance of the Database class.
      */
-    public function addConnection($key, $dsn, $username = null, $password = null, $options = []): self
+    public function addConnection(string $key,string $dsn,?string $username = null,?string $password = null, array $options = []): self
     {
         if (isset($this->connections[$key])) {
             throw new EDatabaseError(sprintf('Database has already be specified for key "%s"', $key));
@@ -74,9 +78,9 @@ class Database extends AutoInitialized
      * @param string $key The key of the connection to select.
      * @return bool Returns true if the connection was successfully selected, false otherwise.
      */
-    public function selectConnection($key): bool
+    public function selectConnection(string $key): bool
     {
-        if ($this->driverKey === $key) {
+        if ($this->driver_key === $key) {
             return false;
         }
 
@@ -84,7 +88,7 @@ class Database extends AutoInitialized
             throw new EDatabaseError(sprintf("Connection \"%s\" was not found or is not a Driver type", $key));
         }
 
-        $this->setDriver($this->connections[$this->driverKey = $key]);
+        $this->setDriver($this->connections[$this->driver_key = $key]);
         return true;
     }
 
@@ -151,7 +155,7 @@ class Database extends AutoInitialized
      * @param string|null $sequence The name of the sequence object from which the ID should be retrieved.
      * @return int The last inserted ID.
      */
-    public function getLastInsertID($sequence = null)
+    public function getLastInsertID(?string $sequence = null)
     {
         return $this->getDriver()->getLastInsertID($sequence);
     }
@@ -162,7 +166,7 @@ class Database extends AutoInitialized
      */
     public function getLastQuery()
     {
-        return [$this->queryStr, $this->queryParams, $this->queryRowsAffected];
+        return [$this->query_str, $this->query_params, $this->query_rows_affected];
     }
 
     /**
@@ -172,14 +176,14 @@ class Database extends AutoInitialized
      * @param array|null $params The parameters to be used in the SQL query. Default is null.
      * @return mixed The SQL query and parameters.
      */
-    public function buildSql($sql = null, $params = null)
+    public function buildSql(?string $sql = null, $params = null)
     {
         if (empty($sql)) {
-            $sql = $this->queryStr;
+            $sql = $this->query_str;
         }
 
         if (empty($params)) {
-            $params = $this->queryParams;
+            $params = $this->query_params;
         }
 
         if (count($params) > 0) {
@@ -198,7 +202,7 @@ class Database extends AutoInitialized
      * @param string $sql The SQL query to check.
      * @return bool Returns true if the query is cacheable, false otherwise.
      */
-    public function isCacheable($sql)
+    public function isCacheable(string $sql)
     {
         return preg_match('/^\s*(SELECT|SHOW|DESCRIBE)\b/i', $sql) > 0;
     }
@@ -209,7 +213,7 @@ class Database extends AutoInitialized
      * @param string $driver The name of the database driver to check.
      * @return bool Returns true if the driver is supported, false otherwise.
      */
-    public function isSupported($driver): bool
+    public function isSupported(string $driver): bool
     {
         static $drivers;
         if ($drivers == null) {
@@ -281,8 +285,8 @@ class Database extends AutoInitialized
     public function setDriver(Driver $driver): self
     {
         if ($this->driver !== $driver) {
-            $this->driver       = $driver;
-            $this->queryCounter = 0;
+            $this->driver        = $driver;
+            $this->query_counter = 0;
         }
         return $this;
     }
@@ -307,13 +311,12 @@ class Database extends AutoInitialized
         return $this->getDriver()->commit();
     }
 
-
     /**
      * Rolls back the current transaction.
      *
      * @return bool Returns true if the rollback was successful, false otherwise.
      */
-    public function rollback():bool
+    public function rollback(): bool
     {
         return $this->getDriver()->rollback();
     }
@@ -325,7 +328,7 @@ class Database extends AutoInitialized
      */
     public function execute(): mixed
     {
-        return $this->queryInternal('');
+        return $this->queryInternal();
     }
 
     /**
@@ -334,7 +337,7 @@ class Database extends AutoInitialized
      * @param array $args Optional arguments for the fetch operation.
      * @return mixed The fetched data.
      */
-    public function fetch($args = []): mixed
+    public function fetch(array $args = []): mixed
     {
         return $this->queryInternal('fetch', $args);
     }
@@ -345,7 +348,7 @@ class Database extends AutoInitialized
      * @param array $args An optional array of arguments to filter the query.
      * @return mixed Returns the fetched rows from the database.
      */
-    public function fetchAll($args = []): mixed
+    public function fetchAll(array $args = []): mixed
     {
         return $this->queryInternal('fetchAll', $args);
     }
@@ -356,7 +359,7 @@ class Database extends AutoInitialized
      * @param array $args An optional array of arguments.
      * @return mixed The value of the requested column from the next row of the result set.
      */
-    public function fetchColumn($args = []): mixed
+    public function fetchColumn(array $args = []): mixed
     {
         return $this->queryInternal('fetchColumn', $args);
     }
@@ -368,7 +371,7 @@ class Database extends AutoInitialized
      * @param array $params An optional array of parameters to bind to the query.
      * @return self Returns an instance of the Database class.
      */
-    public function loadSql($sql, $params = []): self
+    public function loadSql(string $sql,array $params = []): self
     {
         foreach ($params as $key => &$value) {
             if (is_array($value)) {
@@ -388,8 +391,8 @@ class Database extends AutoInitialized
             }
         }
 
-        $this->queryStr    = $sql;
-        $this->queryParams = $params;
+        $this->query_str    = $sql;
+        $this->query_params = $params;
 
         return $this;
     }
@@ -403,7 +406,7 @@ class Database extends AutoInitialized
      *
      * @return bool|PDOStatement Returns a PDOStatement object representing the prepared statement, or false on failure.
      */
-    public function prepare($sql = null, array $params = [], array $options = []): bool | PDOStatement
+    public function prepare(?string $sql = null, array $params = [], array $options = []): bool | PDOStatement
     {
         return $this->getDriver()->prepare($sql, $params, $options);
     }
@@ -415,12 +418,12 @@ class Database extends AutoInitialized
      * @param array $args Optional arguments for fetching the query results.
      * @return mixed The result of the query execution.
      */
-    protected function queryInternal(string $method, array $args = []): mixed
+    protected function queryInternal(string $method = '', array $args = []): mixed
     {
         $sql = $this->buildSql();
 
         if ($this->getCache()->isEnabled() && $this->isCacheable($sql)) {
-            $cacheKey = $this->buildCacheID($sql, $method, $this->driver->getSignature());
+            $cacheKey = $this->buildCacheID($sql, $method, $this->getDriver()->getSignature());
             if ($cached = $this->getCache()->get($cacheKey)) {
                 return $cached;
             }
@@ -430,8 +433,8 @@ class Database extends AutoInitialized
             $this->beforeQuery();
             $sth = $this->prepare($sql, []);
             $sth->execute();
-            $result                  = empty($method) ? $sth->rowCount() : call_user_func_array([$sth, $method], $args);
-            $this->queryRowsAffected = is_array($result) ? count($result) : $sth->rowCount();
+            $result                    = empty($method) ? $sth->rowCount() : call_user_func_array([$sth, $method], $args);
+            $this->query_rows_affected = is_array($result) ? count($result) : $sth->rowCount();
             $sth->closeCursor();
             $this->afterQuery();
         } catch (\PDOException $exception) {
@@ -468,7 +471,7 @@ class Database extends AutoInitialized
      */
     protected function beforeQuery()
     {
-        $this->queryCounter++;
+        $this->query_counter++;
     }
 
     /**
@@ -545,6 +548,32 @@ class Database extends AutoInitialized
     {
         $this->getDriver()->setConnected(false)->setOptions($options);
         return $this;
+    }
+
+    /**
+     * Returns the query builder instance.
+     *
+     * @return QueryBuilderInterface The query builder instance.
+     */
+    public function getQueryBuilder(): QueryBuilderInterface
+    {
+        return QueryBuilder::create(
+            $this->getDriver()->getPDO()->getAttribute(\PDO::ATTR_DRIVER_NAME),
+            ['db' => $this]
+        );
+    }
+
+    /**
+     * Retrieves the schema builder instance.
+     *
+     * @return SchemaBuilderInterface The schema builder instance.
+     */
+    public function getSchemaBuilder(): SchemaBuilderInterface
+    {
+        return SchemaBuilder::create(
+            $this->getDriver()->getPDO()->getAttribute(\PDO::ATTR_DRIVER_NAME),
+            ['db' => $this]
+        );
     }
 }
 /** End of Database **/

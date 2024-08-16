@@ -124,7 +124,7 @@ class Driver extends AutoInitialized
      * @param string|null $sequence The name of the sequence object from which the ID should be retrieved.
      * @return mixed The last inserted ID.
      */
-    public function getLastInsertID($sequence = null): mixed
+    public function getLastInsertID(?string $sequence = null): mixed
     {
         return $this->getPDO()->lastInsertId($sequence);
     }
