@@ -183,14 +183,14 @@ final class Schema extends SchemaBuilder
         return "DESCRIBE $table_name";
     }
 
-    protected function composeDropDatabase(string $db_name, bool $if_not_exists = true): string
+    protected function composeDropDatabase(string $db_name, bool $if_exists = true): string
     {
         if (empty($db_name)) {
             throw new EDatabaseError('Database name can not be empty.');
         }
 
         $sql = 'DROP DATABASE ';
-        if ($if_not_exists == true) {
+        if ($if_exists == true) {
             $sql .= 'IF EXISTS ';
         }
         $sql .= $this->quoteIdentifier($db_name) . ';';
@@ -207,14 +207,14 @@ final class Schema extends SchemaBuilder
         return 'DROP INDEX ' . $this->protectIdentifiers($index_name) . ' ON ' . $this->protectIdentifiers($table_name);
     }
 
-    protected function composeDropTable(string $table_name, bool $if_not_exists = true): string
+    protected function composeDropTable(string $table_name, bool $if_exists = true): string
     {
         if (empty($table_name)) {
             throw new EDatabaseError('Table name can not be empty.');
         }
 
         $sql = 'DROP TABLE ';
-        if ($if_not_exists == true) {
+        if ($if_exists == true) {
             $sql .= 'IF EXISTS ';
         }
         $sql .= $this->quoteIdentifier($table_name);

@@ -49,10 +49,10 @@ interface SchemaBuilderInterface
     public function createTable(string $table_name, bool $if_not_exists = true): mixed;
     public function describeTable($table_name): mixed;
     public function dropColumn(mixed $column, string $table_name): mixed;
-    public function dropDatabase(string $db_name, bool $if_not_exists = true): mixed;
+    public function dropDatabase(string $db_name, bool $if_exists = true): mixed;
     public function dropIndex(string $index_name, string $table_name): mixed;
     public function dropPrimaryKey(string $index_name, string $table_name): mixed;
-    public function dropTable(string $table_name, bool $if_not_exists = true): mixed;
+    public function dropTable(string $table_name, bool $if_exists = true): mixed;
     public function dropTableIfExists($table_name): mixed;
     public function existsTable(string $table_name): bool;
     public function index(mixed $column, ?string $index_name = null): IndexBuilderInterface;

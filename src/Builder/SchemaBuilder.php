@@ -229,9 +229,9 @@ abstract class SchemaBuilder extends BuilderAbstract implements SchemaBuilderInt
         return $this->execute($sql);
     }
 
-    public function dropDatabase(string $db_name, bool $if_not_exists = true): mixed
+    public function dropDatabase(string $db_name, bool $if_exists = true): mixed
     {
-        $sql = $this->composeDropDatabase($db_name, $if_not_exists);
+        $sql = $this->composeDropDatabase($db_name, $if_exists);
 
         return $this->execute($sql);
     }
@@ -250,9 +250,9 @@ abstract class SchemaBuilder extends BuilderAbstract implements SchemaBuilderInt
         return $this->execute($sql);
     }
 
-    public function dropTable(string $table_name, bool $if_not_exists = true): mixed
+    public function dropTable(string $table_name, bool $if_exists = true): mixed
     {
-        $sql = $this->composeDropTable($table_name, $if_not_exists);
+        $sql = $this->composeDropTable($table_name, $if_exists);
 
         return $this->execute($sql);
     }
@@ -354,11 +354,11 @@ abstract class SchemaBuilder extends BuilderAbstract implements SchemaBuilderInt
 
     abstract protected function composeDescribeTable(string $table_name): string;
 
-    abstract protected function composeDropDatabase(string $db_name, bool $if_not_exists = true): string;
+    abstract protected function composeDropDatabase(string $db_name, bool $if_exists = true): string;
 
     abstract protected function composeDropIndex(string $index_name, string $table_name, bool $is_primary_key = false): string;
 
-    abstract protected function composeDropTable(string $table_name, bool $if_not_exists = true): string;
+    abstract protected function composeDropTable(string $table_name, bool $if_exists = true): string;
 
     abstract protected function composeExistsTable(string $table_name): string;
 
